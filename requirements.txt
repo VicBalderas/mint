@@ -1,0 +1,23 @@
+# Data
+yfinance
+pandas
+numpy
+
+# Feature Engineering
+pandas-ta
+
+# Modeling — Classical ML
+scikit-learn
+
+# Modeling — Deep Learning
+# This pytorch version is for linux, python, cuda 13.0
+# pip install torch torchvision --index-url https://download.pytorch.org/whl/cu130
+
+# Visualization
+matplotlib
+seaborn
+
+# Utilities
+joblib          # model serialization (pairs with scikit-learn)
+tqdm            # progress bars for training loops
+python-dotenv   # manage API keys / config via .env file
