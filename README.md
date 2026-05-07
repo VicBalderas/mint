@@ -1,6 +1,6 @@
 # MINT — Machine Intelligence for Trading
 
-An end-to-end ML pipeline for equity signal generation and multi-asset portfolio simulation. Designed to streamline the full workflow from data collection to portfolio simulation.
+A Machine Learning pipeline for equity signal generation and multi-asset portfolio simulation. Designed to streamline the full workflow from data collection to portfolio simulation.
 
 The entire pipeline is controlled from a single file: `config.py`.
 
