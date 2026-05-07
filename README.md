@@ -1,40 +1,22 @@
 # MINT — Machine Intelligence for Trading
 
-A Machine Learning pipeline for equity signal generation and multi-asset portfolio simulation. Designed to streamline the full workflow from data collection to portfolio simulation.
-
-The entire pipeline is controlled from a single file: `config.py`.
+A pipeline for training ML models that predict next-day price direction, and simulating how those signals would perform as a portfolio.
 
 ---
 
 ## What it does
 
-MINT trains classification models to predict next-day price direction for individual tickers, then simulates how those signals would have performed as a portfolio. Each step is a standalone script that can be run independently or as part of the full pipeline.
+The starting question was simple: could a model tell me whether a stock was going to go up or down tomorrow?
+
+The problem is that "a stock" isn't specific enough — you need a separate model per ticker, since each one has its own volatility, behavior, and optimal feature set. That means for every new ticker: new data, new preprocessing, new feature selection, new training run, new evaluation. Do that a few times and it gets tedious fast.
+
+MINT is the answer to that tedium. The entire workflow — data fetching, preprocessing, feature engineering, training, backtesting — is driven from a single config file. Adding a new ticker means copying a config block and running the same scripts. Nothing else changes.
+
+The second question was: if you let a portfolio run entirely on those model signals, does it actually grow? That required a simulation layer, so MINT ships one — multi-asset, with transaction costs, operating only on the test split the models never saw during training.
 
 ```
 fetch → preprocess → eda → preprocess → train → evaluate → portfolio
 ```
-
-It also ships a `predict.py` for generating live signals after market close — plug the output into any execution system you already use.
-
----
-
-## Background
-
-This project started with a simple question: could an ML-driven system generate signals that grow a portfolio and could the entire workflow be made fast, reproducible, and easy to iterate on?
-
-From the start, the goal was not to beat the market, but to build a system that makes experimenting with ML in finance straightforward and honest. Financial data is noisy, feature–label relationships are weak, and consistently outperforming the market is inherently difficult. Rather than working around those constraints, this project embraces them.
-
-MINT was designed as a clean, configurable pipeline where the full process from raw data to portfolio simulation could be run, inspected, and modified with minimal friction. The emphasis is on clarity, reproducibility, and rapid iteration through a single configuration file.
-
-Several observations shaped the system:
-
-- EDA before training revealed that multiple features were highly correlated, adding noise rather than signal
-- Logistic Regression consistently outperformed Random Forest signaling that simpler models handled low-signal data more effectively
-- Not all tickers are equally predictable in the sense that highly volatile assets like TSLA produced noisier signals than more stable ones like AAPL
-- Portfolio-level behavior provided more insight than single-ticker results by achieving a Sharpe ratio of 1.628 while being invested ~60% of the time reflects a different risk profile, not just a different return
-
-The full development process — including experiments, trade-offs, and design decisions — is documented in [`docs/devlog.md`](docs/devlog.md).  
-Model-specific results and notes are available in [`docs/models.md`](docs/models.md).
 
 ---
 
@@ -156,9 +138,7 @@ All features are engineered from raw OHLCV — no external data required. After 
 
 ## Feature Selection
 
-After running `eda.py`, the correlation heatmap and terminal summary identify 
-redundant features. Anything above 0.85 correlation with another feature is a 
-candidate to drop — keeping both would add noise without adding information.
+After running `eda.py`, the correlation heatmap and terminal summary identify redundant features. Anything above 0.85 correlation with another feature is a candidate to drop — keeping both adds noise without adding information.
 
 ![QQQ Correlation Heatmap](assets/qqq_correlation_heatmap.png)
 
@@ -183,27 +163,29 @@ For QQQ, four features were dropped after EDA:
 | `logreg`       | Logistic Regression — strong baseline, performs well on low-signal financial data  |
 | `randomforest` | Random Forest — useful for non-linear regimes, tune carefully to avoid overfitting |
 
+Logistic Regression consistently outperformed Random Forest in testing — simpler models tend to handle noisy financial data better than complex ones.
+
 To add a new model (e.g. LightGBM): add its hyperparameters to `config.py` and a build branch in `train.py`'s `build_model()`. Nothing else changes.
 
 ---
 
-## Portfolio Results
+## Portfolio Simulation Results
 
 Simulation period: **May 2025 → May 2026** — test split only, data the models never saw during training.
 
 | Metric            | ML Portfolio | Blended B&H |
 |-------------------|--------------|-------------|
-| Total Return      | **+31.07%**  | +37.92%     |
-| Annualized Return | **+34.33%**  | +42.01%     |
-| Sharpe Ratio      | **1.628**    | —           |
-| Max Drawdown      | **-10.37%**  | —           |
-| Days Invested     | **60.6%**    | 100%        |
+| Total Return      | +31.07%      | +37.92%     |
+| Annualized Return | +34.33%      | +42.01%     |
+| Sharpe Ratio      | 1.628        | —           |
+| Max Drawdown      | -10.37%      | —           |
+| Days Invested     | 60.6%        | 100%        |
 
-The portfolio was in cash ~40% of the time (dark bands in the chart below), sitting out uncertain periods rather than holding through them. It captured most of the upside with meaningfully less market exposure and a Sharpe ratio of 1.628 — well above the 1.0 threshold considered strong.
+The portfolio trailed buy-and-hold on raw return, but was in cash roughly 40% of the time — sitting out uncertain periods rather than holding through them. Whether that tradeoff is worthwhile depends on what you're optimizing for.
 
 ![Portfolio Equity Curve](assets/portfolio_equity_curve.png)
 
-The top panel shows the combined ML portfolio vs the blended buy-and-hold baseline. The bottom panel shows each ticker's individual model performance normalized to the same starting capital — useful for seeing which signals are contributing and which are dragging.
+The top panel shows the combined ML portfolio vs the blended buy-and-hold baseline. The bottom panel shows each ticker's individual model performance normalized to the same starting capital.
 
 ---
 
